@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: yoga-pose-web
+    env: python
+    plan: free
+    region: oregon
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app"
+    envVars:
+      PYTHON_VERSION: 3.10
