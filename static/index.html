@@ -1,43 +1,43 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tadasana Pose Analyzer</title>
 
     <style>
         body {
-            font-family: Arial;
+            font-family: Arial, sans-serif;
             padding: 20px;
-            max-width: 500px;
+            max-width: 600px;
             margin: auto;
         }
-
         h2 {
-            text-align: center;
+            margin-bottom: 5px;
         }
-
-        input, button {
-            width: 100%;
-            padding: 12px;
-            margin-top: 10px;
-            font-size: 16px;
-        }
-
-        button {
-            background: #007bff;
-            border: none;
-            color: white;
-            border-radius: 6px;
-        }
-
-        #feedback {
-            margin-top: 20px;
-        }
-
         .card {
             padding: 15px;
-            border-radius: 10px;
             background: #f0f0f0;
+            border-radius: 10px;
             margin-bottom: 10px;
+        }
+        #preview {
+            width: 100%;
+            margin-top: 15px;
+            display: none;
+            border-radius: 10px;
+        }
+        button {
+            margin-top: 10px;
+            padding: 10px 15px;
+            border: none;
+            background: #007bff;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #005fcc;
         }
     </style>
 </head>
@@ -45,35 +45,44 @@
 <body>
 
 <h2>Tadasana Pose Analyzer</h2>
-<p style="text-align:center;">Upload your photo to get feedback</p>
+<p>Upload an image to get posture feedback.</p>
 
 <input type="file" id="fileInput" accept="image/*">
 <button onclick="upload()">Analyze</button>
 
+<img id="preview">
+
 <div id="feedback"></div>
 
 <script>
-async function upload() {
-    const file = document.getElementById("fileInput").files[0];
-    if (!file) return alert("Choose an image!");
+    // show preview image
+    document.getElementById("fileInput").onchange = function(evt) {
+        const file = evt.target.files[0];
+        if (!file) return;
 
-    let form = new FormData();
-    form.append("file", file);
+        const img = document.getElementById("preview");
+        img.src = URL.createObjectURL(file);
+        img.style.display = "block";
+    };
 
-    let res = await fetch("/analyze", {
-        method: "POST",
-        body: form
-    });
 
-    let data = await res.json();
+    async function upload() {
+        const file = document.getElementById("fileInput").files[0];
+        if (!file) return alert("Choose an image!");
 
-    let fb = document.getElementById("feedback");
-    fb.innerHTML = "";
+        let form = new FormData();
+        form.append("file", file);
 
-    data.feedback.forEach(text => {
-        fb.innerHTML += `<div class="card">${text}</div>`;
-    });
-}
+        let res = await fetch("/analyze", { method: "POST", body: form });
+        let data = await res.json();
+
+        let fb = document.getElementById("feedback");
+        fb.innerHTML = "";
+
+        data.feedback.forEach(msg => {
+            fb.innerHTML += `<div class="card">${msg}</div>`;
+        });
+    }
 </script>
 
 </body>
