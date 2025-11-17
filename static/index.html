@@ -1,69 +1,80 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Tadasana Posture Demo</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+            max-width: 500px;
+            margin: auto;
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            font-size: 16px;
+        }
+
+        button {
+            background: #007bff;
+            border: none;
+            color: white;
+            border-radius: 6px;
+        }
+
+        #feedback {
+            margin-top: 20px;
+        }
+
+        .card {
+            padding: 15px;
+            border-radius: 10px;
+            background: #f0f0f0;
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
+
 <body>
 
-<h2>Tadasana Pose Correction</h2>
+<h2>Tadasana Pose Analyzer</h2>
+<p style="text-align:center;">Upload your photo to get feedback</p>
 
-<div id="cameraBox">
-    <video id="video" autoplay playsinline></video>
-</div>
+<input type="file" id="fileInput" accept="image/*">
+<button onclick="upload()">Analyze</button>
 
-<p id="status">Initializing camera…</p>
-
-<div id="feedbackBox"></div>
+<div id="feedback"></div>
 
 <script>
-const video = document.getElementById("video");
-const statusTxt = document.getElementById("status");
-const feedbackBox = document.getElementById("feedbackBox");
+async function upload() {
+    const file = document.getElementById("fileInput").files[0];
+    if (!file) return alert("Choose an image!");
 
-async function startCamera() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-        statusTxt.innerText = "Camera ready. Hold your posture!";
-        analyzeLoop();
-    } catch (err) {
-        statusTxt.innerText = "Camera access denied.";
-    }
-}
+    let form = new FormData();
+    form.append("file", file);
 
-function captureFrame() {
-    let canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d").drawImage(video, 0, 0);
-
-    return new Promise(resolve => {
-        canvas.toBlob(blob => resolve(blob), "image/jpeg", 0.7);
+    let res = await fetch("/analyze", {
+        method: "POST",
+        body: form
     });
-}
 
-async function analyzeLoop() {
-    const blob = await captureFrame();
-    const form = new FormData();
-    form.append("file", blob, "frame.jpg");
-
-    let res = await fetch("/analyze", { method: "POST", body: form });
     let data = await res.json();
 
-    feedbackBox.innerHTML = "";
-    data.feedback.forEach(f => {
-        let item = document.createElement("div");
-        item.className = f.includes("Good") ? "good" : "bad";
-        item.innerText = f;
-        feedbackBox.appendChild(item);
+    let fb = document.getElementById("feedback");
+    fb.innerHTML = "";
+
+    data.feedback.forEach(text => {
+        fb.innerHTML += `<div class="card">${text}</div>`;
     });
-
-    setTimeout(analyzeLoop, 200);
 }
-
-startCamera();
 </script>
+
 </body>
 </html>
