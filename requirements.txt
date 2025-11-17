@@ -1,0 +1,5 @@
+opencv-python
+numpy
+fastapi
+uvicorn
+mediapipe==0.10.20
