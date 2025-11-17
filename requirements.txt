@@ -1,6 +1,6 @@
-flask
-mediapipe==0.10.11
+fastapi
+uvicorn
+python-multipart
 opencv-python-headless
-gunicorn
-protobuf==3.20.3
 numpy
+cvzone

@@ -1,13 +1,13 @@
 # app.py
 import cv2
 import numpy as np
-import mediapipe as mp
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
+from cvzone.PoseModule import PoseDetector
 
-mp_pose = mp.solutions.pose
+detector = PoseDetector(detectionCon=0.7, trackCon=0.6)
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -26,56 +26,56 @@ def angle(a, b, c):
     return float(np.degrees(np.arccos(cosang)))
 
 
-def check_tadasana(landmarks):
-    mp_l = mp_pose.PoseLandmark
-    L_SH = landmarks[mp_l.LEFT_SHOULDER.value]
-    R_SH = landmarks[mp_l.RIGHT_SHOULDER.value]
-    L_EL = landmarks[mp_l.LEFT_ELBOW.value]
-    R_EL = landmarks[mp_l.RIGHT_ELBOW.value]
-    L_WR = landmarks[mp_l.LEFT_WRIST.value]
-    R_WR = landmarks[mp_l.RIGHT_WRIST.value]
-    L_HIP = landmarks[mp_l.LEFT_HIP.value]
-    R_HIP = landmarks[mp_l.RIGHT_HIP.value]
-    L_KNEE = landmarks[mp_l.LEFT_KNEE.value]
-    R_KNEE = landmarks[mp_l.RIGHT_KNEE.value]
-    L_ANK = landmarks[mp_l.LEFT_ANKLE.value]
-    R_ANK = landmarks[mp_l.RIGHT_ANKLE.value]
+def check_tadasana(lm):
+    # cvzone returns list of 33 landmarks: each = (x, y, z)
+    L_SH = lm[11]
+    R_SH = lm[12]
+    L_EL = lm[13]
+    R_EL = lm[14]
+    L_WR = lm[15]
+    R_WR = lm[16]
+    L_HIP = lm[23]
+    R_HIP = lm[24]
+    L_KNEE = lm[25]
+    R_KNEE = lm[26]
+    L_ANK = lm[27]
+    R_ANK = lm[28]
 
     fb = []
 
     # Palms joined above head
-    mid_hands_y = (L_WR.y + R_WR.y) / 2.0
-    mid_sh_y = (L_SH.y + R_SH.y) / 2.0
-    wrist_dist = euclid((L_WR.x, L_WR.y), (R_WR.x, R_WR.y))
+    mid_hands_y = (L_WR[1] + R_WR[1]) / 2
+    mid_sh_y = (L_SH[1] + R_SH[1]) / 2
+    wrist_dist = euclid((L_WR[0], L_WR[1]), (R_WR[0], R_WR[1]))
 
-    if not (mid_hands_y < mid_sh_y and wrist_dist < 0.08):
+    if not (mid_hands_y < mid_sh_y and wrist_dist < 40):
         fb.append("Raise hands and join palms above head")
 
     # Elbow angles
-    L_ang = angle((L_SH.x, L_SH.y), (L_EL.x, L_EL.y), (L_WR.x, L_WR.y))
-    R_ang = angle((R_SH.x, R_SH.y), (R_EL.x, R_EL.y), (R_WR.x, R_WR.y))
+    L_ang = angle(L_SH[:2], L_EL[:2], L_WR[:2])
+    R_ang = angle(R_SH[:2], R_EL[:2], R_WR[:2])
     if not (160 <= L_ang <= 180) or not (160 <= R_ang <= 180):
         fb.append("Keep elbows straight (no bending)")
 
     # Torso alignment
-    mid_sh_x = (L_SH.x + R_SH.x) / 2.0
-    mid_hp_x = (L_HIP.x + R_HIP.x) / 2.0
-    if abs(mid_sh_x - mid_hp_x) > 0.035:
+    mid_sh_x = (L_SH[0] + R_SH[0]) / 2
+    mid_hp_x = (L_HIP[0] + R_HIP[0]) / 2
+    if abs(mid_sh_x - mid_hp_x) > 20:
         fb.append("Keep your torso upright and centered")
 
     # Leg check
-    thigh_r = ((R_KNEE.x + R_HIP.x)/2, (R_KNEE.y + R_HIP.y)/2)
-    thigh_l = ((L_KNEE.x + L_HIP.x)/2, (L_KNEE.y + L_HIP.y)/2)
+    thigh_r = ((R_KNEE[0] + R_HIP[0]) / 2, (R_KNEE[1] + R_HIP[1]) / 2)
+    thigh_l = ((L_KNEE[0] + L_HIP[0]) / 2, (L_KNEE[1] + L_HIP[1]) / 2)
 
-    d1 = euclid((L_ANK.x,L_ANK.y), thigh_r)
-    d2 = euclid((R_ANK.x,R_ANK.y), thigh_l)
+    d1 = euclid((L_ANK[0], L_ANK[1]), thigh_r)
+    d2 = euclid((R_ANK[0], R_ANK[1]), thigh_l)
 
-    if not ((d1 < 0.24 and L_ANK.y < R_KNEE.y - 0.02) or
-            (d2 < 0.24 and R_ANK.y < L_KNEE.y - 0.02)):
+    if not ((d1 < 120 and L_ANK[1] < R_KNEE[1] - 15) or
+            (d2 < 120 and R_ANK[1] < L_KNEE[1] - 15)):
         fb.append("Place one foot near inner thigh of standing leg")
 
     # Facing camera
-    if abs(L_SH.x - R_SH.x) <= 0.02:
+    if abs(L_SH[0] - R_SH[0]) <= 10:
         fb.append("Face the camera directly")
 
     return fb if fb else ["Good Tadasana Posture!"]
@@ -87,17 +87,14 @@ async def analyze_image(file: UploadFile = File(...)):
     np_img = np.frombuffer(contents, np.uint8)
     frame = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
 
-    with mp_pose.Pose() as pose:
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        res = pose.process(rgb)
+    img = detector.findPose(frame, draw=False)
+    lmList, _ = detector.findPosition(img, draw=False)
 
-        if not res.pose_landmarks:
-            return {"feedback": ["Pose not detected — stand fully in frame."]}
+    if not lmList or len(lmList) < 29:
+        return {"feedback": ["Pose not detected — stand fully in frame."]}
 
-        landmarks = res.pose_landmarks.landmark
-        feedback = check_tadasana(landmarks)
-
-        return {"feedback": feedback}
+    feedback = check_tadasana(lmList)
+    return {"feedback": feedback}
 
 
 @app.get("/")
