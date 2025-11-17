@@ -1,5 +1,5 @@
 flask
-mediapipe==0.10.14
+mediapipe==0.10.11
 opencv-python-headless
 gunicorn
 protobuf==3.20.3
