@@ -1,0 +1,43 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding: 10px;
+}
+
+h2 {
+    margin-top: 10px;
+    font-size: 22px;
+}
+
+#cameraBox {
+    width: 100%;
+    max-width: 380px;
+    margin: auto;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+video {
+    width: 100%;
+    border-radius: 14px;
+}
+
+#feedbackBox {
+    margin-top: 15px;
+}
+
+.good {
+    background: #d4ffd4;
+    color: #008000;
+    padding: 10px;
+    margin: 6px;
+    border-radius: 8px;
+}
+
+.bad {
+    background: #ffe3e3;
+    color: #a00000;
+    padding: 10px;
+    margin: 6px;
+    border-radius: 8px;
+}
